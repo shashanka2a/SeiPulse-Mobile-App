@@ -129,7 +129,7 @@ export const HomeTab: React.FC = () => {
           <div>
             <h2 className="text-xl font-bold mb-2">No Wallet Found</h2>
             <p className="text-muted-foreground">
-              To use SeiPulse, you need a Sei wallet. We'll help you create one securely in just a few steps.
+              To use SeiPulse, you need a Sei wallet. We&apos;ll help you create one securely in just a few steps.
             </p>
           </div>
 

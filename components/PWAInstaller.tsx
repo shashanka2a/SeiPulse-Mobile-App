@@ -106,7 +106,7 @@ export const PWAInstaller: React.FC = () => {
           <div className="flex-1">
             <h3 className="font-medium mb-1">Install SeiPulse</h3>
             <p className="text-sm opacity-90 mb-3">
-              Tap the share button <span className="inline-block w-4 h-4 bg-white/20 rounded text-center text-xs">↗</span> and select "Add to Home Screen"
+              Tap the share button <span className="inline-block w-4 h-4 bg-white/20 rounded text-center text-xs">↗</span> and select &quot;Add to Home Screen&quot;
             </p>
             <div className="flex space-x-2">
               <Button 

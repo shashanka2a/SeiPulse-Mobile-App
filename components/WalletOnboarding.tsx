@@ -136,7 +136,7 @@ export const WalletOnboarding: React.FC<OnboardingProps> = ({ onComplete, onClos
       <div>
         <h2 className="text-2xl font-bold mb-2">Welcome to SeiPulse</h2>
         <p className="text-muted-foreground">
-          To get started with Sei payments, you'll need a wallet. We'll help you create one securely.
+          To get started with Sei payments, you&apos;ll need a wallet. We&apos;ll help you create one securely.
         </p>
       </div>
 
@@ -395,7 +395,7 @@ export const WalletOnboarding: React.FC<OnboardingProps> = ({ onComplete, onClos
         className="w-full h-12" 
         onClick={() => setStep('verify')}
       >
-        I've Saved My Recovery Phrase
+        I&apos;ve Saved My Recovery Phrase
       </Button>
     </div>
   );
@@ -405,7 +405,7 @@ export const WalletOnboarding: React.FC<OnboardingProps> = ({ onComplete, onClos
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-bold">Verify Recovery Phrase</h2>
         <p className="text-muted-foreground">
-          Enter the requested words to confirm you've saved your phrase
+          Enter the requested words to confirm you&apos;ve saved your phrase
         </p>
       </div>
 
