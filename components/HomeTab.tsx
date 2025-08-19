@@ -1,8 +1,9 @@
-import React from 'react';
-import { Plus, ArrowUpRight, ArrowDownLeft, Eye, EyeOff, Settings, Bell, Sun, Moon } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, ArrowUpRight, ArrowDownLeft, Eye, EyeOff, Settings, Bell, Sun, Moon, Wallet } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { useTheme } from '../pages/index';
+import { WalletOnboarding } from './WalletOnboarding';
 
 interface Transaction {
   id: string;
@@ -44,10 +45,113 @@ const mockTransactions: Transaction[] = [
   }
 ];
 
+interface WalletData {
+  address: string;
+  mnemonic: string[];
+  privateKey: string;
+  isBackedUp: boolean;
+  hasPin: boolean;
+  hasBiometric: boolean;
+}
+
 export const HomeTab: React.FC = () => {
   const { isDark, toggleTheme } = useTheme();
-  const [showBalance, setShowBalance] = React.useState(true);
-  const balance = 2847.32;
+  const [showBalance, setShowBalance] = useState(true);
+  const [hasWallet, setHasWallet] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [walletData, setWalletData] = useState<WalletData | null>(null);
+  const [balance, setBalance] = useState(0);
+
+  // Check if user has a wallet on component mount
+  useEffect(() => {
+    const savedWallet = localStorage.getItem('seipulse-wallet');
+    const savedBalance = localStorage.getItem('seipulse-sei-balance');
+    
+    if (savedWallet) {
+      setWalletData(JSON.parse(savedWallet));
+      setHasWallet(true);
+      setBalance(savedBalance ? parseFloat(savedBalance) : 2847.32);
+    } else {
+      // Show onboarding for new users
+      setShowOnboarding(true);
+    }
+  }, []);
+
+  const handleWalletCreated = (newWalletData: WalletData) => {
+    setWalletData(newWalletData);
+    setHasWallet(true);
+    setShowOnboarding(false);
+    setBalance(2847.32); // Give new users some starting balance
+    
+    // Save wallet data
+    localStorage.setItem('seipulse-wallet', JSON.stringify(newWalletData));
+    localStorage.setItem('seipulse-sei-balance', '2847.32');
+  };
+
+  // If no wallet, show onboarding
+  if (!hasWallet && showOnboarding) {
+    return (
+      <WalletOnboarding
+        onComplete={handleWalletCreated}
+        onClose={() => setShowOnboarding(false)}
+      />
+    );
+  }
+
+  // If no wallet and onboarding was closed, show wallet setup prompt
+  if (!hasWallet && !showOnboarding) {
+    return (
+      <div className="p-4 space-y-6">
+        <div className="pt-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                SeiPulse
+              </h1>
+              <p className="text-muted-foreground text-sm">Welcome! 👋</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={toggleTheme}>
+                {isDark ? <Sun size={20} /> : <Moon size={20} />}
+              </Button>
+              <Button variant="ghost" size="icon">
+                <Settings size={20} />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <Card className="p-8 text-center space-y-6">
+          <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto">
+            <Wallet size={40} className="text-white" />
+          </div>
+          
+          <div>
+            <h2 className="text-xl font-bold mb-2">No Wallet Found</h2>
+            <p className="text-muted-foreground">
+              To use SeiPulse, you need a Sei wallet. We'll help you create one securely in just a few steps.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <Button 
+              className="w-full h-12" 
+              onClick={() => setShowOnboarding(true)}
+            >
+              Create Sei Wallet
+            </Button>
+            <Button variant="outline" className="w-full h-12">
+              Import Existing Wallet
+            </Button>
+          </div>
+
+          <div className="text-xs text-muted-foreground">
+            Your wallet is created locally and encrypted. We never store your private keys.
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 space-y-6">

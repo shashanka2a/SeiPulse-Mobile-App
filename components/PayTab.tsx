@@ -46,8 +46,9 @@ export const PayTab: React.FC = () => {
   const [isRequest, setIsRequest] = useState(false);
   
   // Wallet state
-  const [seiBalance, setSeiBalance] = useState(2847.32);
-  const [userAddress] = useState('sei1abc123def456ghi789jkl012mno345pqr678stu');
+  const [seiBalance, setSeiBalance] = useState(0);
+  const [userAddress, setUserAddress] = useState('');
+  const [hasWallet, setHasWallet] = useState(false);
   
   // Contacts and transactions
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -65,9 +66,16 @@ export const PayTab: React.FC = () => {
 
   // Load data from localStorage on mount
   useEffect(() => {
+    const savedWallet = localStorage.getItem('seipulse-wallet');
     const savedBalance = localStorage.getItem('seipulse-sei-balance');
     const savedContacts = localStorage.getItem('seipulse-contacts');
     const savedTransactions = localStorage.getItem('seipulse-transactions');
+    
+    if (savedWallet) {
+      const wallet = JSON.parse(savedWallet);
+      setUserAddress(wallet.address);
+      setHasWallet(true);
+    }
     
     if (savedBalance) setSeiBalance(parseFloat(savedBalance));
     if (savedContacts) setContacts(JSON.parse(savedContacts));
@@ -758,6 +766,37 @@ export const PayTab: React.FC = () => {
       </div>
     </div>
   );
+
+  // If no wallet, show setup prompt
+  if (!hasWallet) {
+    return (
+      <div className="p-4 h-full flex items-center justify-center">
+        <Card className="p-8 text-center space-y-6 max-w-sm">
+          <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto">
+            <Wallet size={32} className="text-white" />
+          </div>
+          
+          <div>
+            <h2 className="text-xl font-bold mb-2">Wallet Required</h2>
+            <p className="text-muted-foreground text-sm">
+              You need a Sei wallet to send and receive payments. Go to the Home tab to create one.
+            </p>
+          </div>
+
+          <Button 
+            className="w-full" 
+            onClick={() => {
+              // This would typically navigate to home tab
+              // For now, we'll just show a message
+              alert('Please go to the Home tab to create your wallet first!');
+            }}
+          >
+            Create Wallet
+          </Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 h-full">
