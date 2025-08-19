@@ -1,16 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
+  // Standard Vercel deployment (no static export)
+  // output: 'export', // Remove this for standard Vercel deployment
   trailingSlash: true,
-  skipTrailingSlashRedirect: true,
-  distDir: 'dist',
   images: {
-    unoptimized: true
+    domains: [],
+    unoptimized: false // Can use Next.js Image optimization on Vercel
   },
   // PWA optimizations
   compress: true,
   poweredByHeader: false,
-  generateEtags: false,
+  generateEtags: true,
   // Security headers for PWA
   async headers() {
     return [
@@ -41,6 +41,10 @@ const nextConfig = {
           {
             key: 'Cache-Control',
             value: 'public, max-age=0, must-revalidate'
+          },
+          {
+            key: 'Service-Worker-Allowed',
+            value: '/'
           }
         ]
       },
@@ -54,6 +58,11 @@ const nextConfig = {
         ]
       }
     ]
+  },
+  // Vercel-specific optimizations
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-slot']
   }
 }
 

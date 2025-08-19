@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "export": "next build && next export"
+    "export": "next build && next export",
+    "build:vercel": "cp next.config.vercel.js next.config.js && next build",
+    "build:static": "cp next.config.js next.config.static.js && next build",
+    "deploy:vercel": "vercel --prod",
+    "preview": "vercel"
   },
   "dependencies": {
     "next": "14.2.15",
