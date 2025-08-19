@@ -80,7 +80,7 @@ export const PayTab: React.FC = () => {
     if (savedBalance) setSeiBalance(parseFloat(savedBalance));
     if (savedContacts) setContacts(JSON.parse(savedContacts));
     if (savedTransactions) {
-      const txs = JSON.parse(savedTransactions).map((tx: any) => ({
+      const txs = JSON.parse(savedTransactions).map((tx: Transaction & { timestamp: string }) => ({
         ...tx,
         timestamp: new Date(tx.timestamp)
       }));

@@ -73,7 +73,7 @@ export const WalletOnboarding: React.FC<OnboardingProps> = ({ onComplete, onClos
     setWalletData(wallet);
     
     // Generate random positions for verification
-    const positions = [];
+    const positions: number[] = [];
     while (positions.length < 3) {
       const pos = Math.floor(Math.random() * 12);
       if (!positions.includes(pos)) {
@@ -450,7 +450,7 @@ export const WalletOnboarding: React.FC<OnboardingProps> = ({ onComplete, onClos
         </p>
       </div>
 
-      <Tabs value={fundingMethod} onValueChange={(value) => setFundingMethod(value as any)}>
+      <Tabs value={fundingMethod} onValueChange={(value) => setFundingMethod(value as 'faucet' | 'transfer' | 'buy')}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="faucet">Testnet Faucet</TabsTrigger>
           <TabsTrigger value="transfer">Receive</TabsTrigger>
