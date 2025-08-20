@@ -44,23 +44,23 @@ export const PayTab: React.FC = () => {
   const [recipientAddress, setRecipientAddress] = useState('');
   const [note, setNote] = useState('');
   const [isRequest, setIsRequest] = useState(false);
-  
+
   // Wallet state
   const [seiBalance, setSeiBalance] = useState(0);
   const [userAddress, setUserAddress] = useState('');
   const [hasWallet, setHasWallet] = useState(false);
-  
+
   // Contacts and transactions
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
-  
+
   // UI state
   const [showAddContact, setShowAddContact] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [showContacts, setShowContacts] = useState(false);
   const [currentTransaction, setCurrentTransaction] = useState<Transaction | null>(null);
-  
+
   // Form states
   const [contactForm, setContactForm] = useState({ name: '', handle: '', address: '' });
 
@@ -70,13 +70,13 @@ export const PayTab: React.FC = () => {
     const savedBalance = localStorage.getItem('seipulse-sei-balance');
     const savedContacts = localStorage.getItem('seipulse-contacts');
     const savedTransactions = localStorage.getItem('seipulse-transactions');
-    
+
     if (savedWallet) {
       const wallet = JSON.parse(savedWallet);
       setUserAddress(wallet.address);
       setHasWallet(true);
     }
-    
+
     if (savedBalance) setSeiBalance(parseFloat(savedBalance));
     if (savedContacts) setContacts(JSON.parse(savedContacts));
     if (savedTransactions) {
@@ -117,9 +117,9 @@ export const PayTab: React.FC = () => {
   };
 
   const formatSeiAmount = (amount: number): string => {
-    return amount.toLocaleString('en-US', { 
-      minimumFractionDigits: 2, 
-      maximumFractionDigits: 6 
+    return amount.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 6
     });
   };
 
@@ -132,7 +132,7 @@ export const PayTab: React.FC = () => {
   const addContact = () => {
     if (!contactForm.name || !contactForm.address) return;
     if (!validateSeiAddress(contactForm.address)) return;
-    
+
     const newContact: Contact = {
       id: `contact-${Date.now()}`,
       name: contactForm.name,
@@ -141,7 +141,7 @@ export const PayTab: React.FC = () => {
       lastUsed: new Date(),
       isFavorite: false
     };
-    
+
     setContacts(prev => [...prev, newContact]);
     setContactForm({ name: '', handle: '', address: '' });
     setShowAddContact(false);
@@ -155,9 +155,9 @@ export const PayTab: React.FC = () => {
     setRecipient(contact.handle);
     setRecipientAddress(contact.address);
     setShowContacts(false);
-    
+
     // Update last used
-    setContacts(prev => prev.map(c => 
+    setContacts(prev => prev.map(c =>
       c.id === contact.id ? { ...c, lastUsed: new Date() } : c
     ));
   };
@@ -165,18 +165,18 @@ export const PayTab: React.FC = () => {
   // Transaction processing
   const processTransaction = async () => {
     if (!amount || !recipientAddress) return;
-    
+
     const amountNum = parseFloat(amount);
     const fee = calculateNetworkFee(amountNum);
     const total = amountNum + fee;
-    
+
     if (total > seiBalance) {
       alert('Insufficient balance');
       return;
     }
-    
+
     setStep('processing');
-    
+
     const transaction: Transaction = {
       id: generateTxHash(),
       type: isRequest ? 'request_sent' : 'sent',
@@ -191,15 +191,15 @@ export const PayTab: React.FC = () => {
       fee: fee,
       blockHeight: Math.floor(Math.random() * 1000000) + 5000000
     };
-    
+
     setCurrentTransaction(transaction);
-    
+
     // Simulate network processing
     setTimeout(() => {
       if (!isRequest) {
         setSeiBalance(prev => prev - total);
       }
-      
+
       const confirmedTx = { ...transaction, status: 'confirmed' as const };
       setTransactions(prev => [confirmedTx, ...prev]);
       setRecentTransactions(prev => [confirmedTx, ...prev.slice(0, 4)]);
@@ -234,14 +234,14 @@ export const PayTab: React.FC = () => {
 
       <div className="space-y-4">
         <div className="flex justify-center space-x-2 mb-6">
-          <Button 
+          <Button
             variant={!isRequest ? "default" : "outline"}
             onClick={() => setIsRequest(false)}
             className="rounded-full px-6"
           >
             Send
           </Button>
-          <Button 
+          <Button
             variant={isRequest ? "default" : "outline"}
             onClick={() => setIsRequest(true)}
             className="rounded-full px-6"
@@ -252,8 +252,8 @@ export const PayTab: React.FC = () => {
 
         <div className="text-center">
           <div className="text-4xl font-bold mb-2 flex items-center justify-center">
-            <input 
-              type="number" 
+            <input
+              type="number"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               className="bg-transparent border-none outline-none text-center w-40"
@@ -276,9 +276,9 @@ export const PayTab: React.FC = () => {
 
         <div className="grid grid-cols-3 gap-2 mt-8">
           {[1, 5, 10, 25, 50, 100].map((preset) => (
-            <Button 
+            <Button
               key={preset}
-              variant="outline" 
+              variant="outline"
               onClick={() => setAmount(preset.toString())}
               className="h-12"
             >
@@ -295,9 +295,9 @@ export const PayTab: React.FC = () => {
             { label: '75%', value: seiBalance * 0.75 },
             { label: 'Max', value: seiBalance * 0.99 } // Leave some for fees
           ].map((preset) => (
-            <Button 
+            <Button
               key={preset.label}
-              variant="outline" 
+              variant="outline"
               size="sm"
               onClick={() => setAmount(preset.value.toFixed(6))}
               className="h-10"
@@ -308,8 +308,8 @@ export const PayTab: React.FC = () => {
         </div>
       </div>
 
-      <Button 
-        className="w-full h-12" 
+      <Button
+        className="w-full h-12"
         disabled={!amount || parseFloat(amount) <= 0 || parseFloat(amount) > seiBalance}
         onClick={() => setStep('recipient')}
       >
@@ -321,14 +321,14 @@ export const PayTab: React.FC = () => {
   const RecipientStep = () => {
     const handleRecipientChange = (value: string) => {
       setRecipient(value);
-      
+
       // Auto-detect if it's a Sei address
       if (validateSeiAddress(value)) {
         setRecipientAddress(value);
       } else {
         // Try to find in contacts
-        const contact = contacts.find(c => 
-          c.handle.toLowerCase() === value.toLowerCase() || 
+        const contact = contacts.find(c =>
+          c.handle.toLowerCase() === value.toLowerCase() ||
           c.name.toLowerCase().includes(value.toLowerCase())
         );
         if (contact) {
@@ -349,7 +349,7 @@ export const PayTab: React.FC = () => {
         <div className="space-y-4">
           <div>
             <Label htmlFor="recipient">Recipient</Label>
-            <Input 
+            <Input
               id="recipient"
               value={recipient}
               onChange={(e) => handleRecipientChange(e.target.value)}
@@ -407,7 +407,7 @@ export const PayTab: React.FC = () => {
                     <TabsTrigger value="contacts">Contacts</TabsTrigger>
                     <TabsTrigger value="add">Add New</TabsTrigger>
                   </TabsList>
-                  
+
                   <TabsContent value="contacts" className="space-y-3">
                     {contacts.length === 0 ? (
                       <p className="text-center text-muted-foreground py-8">
@@ -448,7 +448,7 @@ export const PayTab: React.FC = () => {
                         ))
                     )}
                   </TabsContent>
-                  
+
                   <TabsContent value="add" className="space-y-4">
                     <div>
                       <Label htmlFor="contact-name">Name</Label>
@@ -480,8 +480,8 @@ export const PayTab: React.FC = () => {
                         <p className="text-xs text-red-500 mt-1">Invalid Sei address format</p>
                       )}
                     </div>
-                    <Button 
-                      onClick={addContact} 
+                    <Button
+                      onClick={addContact}
                       className="w-full"
                       disabled={!contactForm.name || !contactForm.address || !validateSeiAddress(contactForm.address)}
                     >
@@ -495,7 +495,7 @@ export const PayTab: React.FC = () => {
 
           <div>
             <Label htmlFor="note">Note (optional)</Label>
-            <Input 
+            <Input
               id="note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -539,8 +539,8 @@ export const PayTab: React.FC = () => {
           )}
         </div>
 
-        <Button 
-          className="w-full h-12" 
+        <Button
+          className="w-full h-12"
           disabled={!recipient || !recipientAddress || !validateSeiAddress(recipientAddress)}
           onClick={() => setStep('confirm')}
         >
@@ -554,16 +554,16 @@ export const PayTab: React.FC = () => {
     const amountNum = parseFloat(amount);
     const fee = calculateNetworkFee(amountNum);
     const total = amountNum + fee;
-    
+
     // Enhanced risk assessment based on amount and recipient
     const isKnownContact = contacts.some(c => c.address === recipientAddress);
     const isLargeAmount = amountNum > seiBalance * 0.1; // More than 10% of balance
     const hasRecentTx = recentTransactions.some(tx => tx.recipientAddress === recipientAddress);
-    
+
     let riskLevel: 'low' | 'medium' | 'high' = 'low';
     if (!isKnownContact && isLargeAmount) riskLevel = 'high';
     else if (!isKnownContact || isLargeAmount) riskLevel = 'medium';
-    
+
     return (
       <div className="space-y-6">
         <div className="text-center space-y-2">
@@ -572,17 +572,15 @@ export const PayTab: React.FC = () => {
         </div>
 
         {/* AI Risk Assessment */}
-        <Card className={`p-4 border-l-4 ${
-          riskLevel === 'high' ? 'border-l-red-500 bg-red-50 dark:bg-red-950' :
+        <Card className={`p-4 border-l-4 ${riskLevel === 'high' ? 'border-l-red-500 bg-red-50 dark:bg-red-950' :
           riskLevel === 'medium' ? 'border-l-yellow-500 bg-yellow-50 dark:bg-yellow-950' :
-          'border-l-green-500 bg-green-50 dark:bg-green-950'
-        }`}>
+            'border-l-green-500 bg-green-50 dark:bg-green-950'
+          }`}>
           <div className="flex items-start space-x-3">
-            <div className={`p-1 rounded-full ${
-              riskLevel === 'high' ? 'bg-red-500' :
+            <div className={`p-1 rounded-full ${riskLevel === 'high' ? 'bg-red-500' :
               riskLevel === 'medium' ? 'bg-yellow-500' :
-              'bg-green-500'
-            }`}>
+                'bg-green-500'
+              }`}>
               {riskLevel === 'high' ? (
                 <AlertTriangle size={16} className="text-white" />
               ) : riskLevel === 'medium' ? (
@@ -599,11 +597,11 @@ export const PayTab: React.FC = () => {
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                {riskLevel === 'high' 
+                {riskLevel === 'high'
                   ? 'Large amount to unknown recipient. Double-check the address.'
                   : riskLevel === 'medium'
-                  ? isKnownContact ? 'Large transaction amount detected.' : 'New recipient. Verify the address.'
-                  : isKnownContact ? 'Trusted contact in your address book.' : 'Transaction appears safe.'
+                    ? isKnownContact ? 'Large transaction amount detected.' : 'New recipient. Verify the address.'
+                    : isKnownContact ? 'Trusted contact in your address book.' : 'Transaction appears safe.'
                 }
               </p>
             </div>
@@ -639,7 +637,7 @@ export const PayTab: React.FC = () => {
                 <Copy size={16} />
               </Button>
             </div>
-            
+
             <div className="space-y-3 pt-4 border-t">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Amount</span>
@@ -684,14 +682,14 @@ export const PayTab: React.FC = () => {
           </div>
         </Card>
 
-        <Button 
+        <Button
           className="w-full h-12 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
           onClick={processTransaction}
           disabled={!isRequest && total > seiBalance}
         >
           {isRequest ? 'Send Request' : `Send ${formatSeiAmount(amountNum)} SEI`}
         </Button>
-        
+
         {!isRequest && total > seiBalance && (
           <p className="text-center text-red-500 text-sm">
             Insufficient balance. You need {formatSeiAmount(total - seiBalance)} more SEI.
@@ -706,7 +704,7 @@ export const PayTab: React.FC = () => {
       <div className="w-20 h-20 bg-blue-500 rounded-full flex items-center justify-center mx-auto animate-pulse">
         <Wallet size={40} className="text-white" />
       </div>
-      
+
       <div>
         <h2 className="text-2xl font-bold mb-2">Processing Transaction</h2>
         <p className="text-muted-foreground">
@@ -730,13 +728,13 @@ export const PayTab: React.FC = () => {
       <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto">
         <Check size={40} className="text-white" />
       </div>
-      
+
       <div>
         <h2 className="text-2xl font-bold mb-2">
           {isRequest ? 'Request Sent!' : 'Payment Sent!'}
         </h2>
         <p className="text-muted-foreground">
-          {isRequest 
+          {isRequest
             ? `Request for $${amount} sent to ${recipient}`
             : `$${amount} sent to ${recipient}`
           }
@@ -775,7 +773,7 @@ export const PayTab: React.FC = () => {
           <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto">
             <Wallet size={32} className="text-white" />
           </div>
-          
+
           <div>
             <h2 className="text-xl font-bold mb-2">Wallet Required</h2>
             <p className="text-muted-foreground text-sm">
@@ -783,8 +781,8 @@ export const PayTab: React.FC = () => {
             </p>
           </div>
 
-          <Button 
-            className="w-full" 
+          <Button
+            className="w-full"
             onClick={() => {
               // This would typically navigate to home tab
               // For now, we'll just show a message
@@ -806,13 +804,13 @@ export const PayTab: React.FC = () => {
           <ArrowLeft size={20} />
         </Button>
         <div className="flex-1 bg-border rounded-full h-2">
-          <div 
+          <div
             className="bg-primary h-2 rounded-full transition-all duration-300"
-            style={{ 
-              width: step === 'amount' ? '20%' : 
-                     step === 'recipient' ? '40%' : 
-                     step === 'confirm' ? '60%' : 
-                     step === 'processing' ? '80%' : '100%' 
+            style={{
+              width: step === 'amount' ? '20%' :
+                step === 'recipient' ? '40%' :
+                  step === 'confirm' ? '60%' :
+                    step === 'processing' ? '80%' : '100%'
             }}
           />
         </div>

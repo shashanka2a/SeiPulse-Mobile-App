@@ -60,14 +60,14 @@ export default function HomePage() {
       
       <ThemeProvider>
         <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 dark:from-gray-900 dark:via-purple-900 dark:to-blue-900">
-          <div className="max-w-md mx-auto bg-background/80 backdrop-blur-sm min-h-screen flex flex-col">
+          <div className="max-w-md mx-auto bg-white dark:bg-gray-800 min-h-screen flex flex-col">
             {/* Main Content */}
             <div className="flex-1 overflow-y-auto pb-20">
               <ActiveComponent />
             </div>
 
             {/* Bottom Navigation */}
-            <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md bg-card/95 backdrop-blur-md border-t border-border">
+            <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-around py-2">
                 {tabs.map((tab) => {
                   const Icon = tab.icon;

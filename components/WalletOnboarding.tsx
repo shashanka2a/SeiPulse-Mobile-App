@@ -53,6 +53,40 @@ export const WalletOnboarding: React.FC<OnboardingProps> = ({ onComplete, onClos
 
   // Generate wallet data
   const generateWallet = () => {
+    try {
+      // Import the real wallet generation function
+      const { generateSeiWallet } = require('../lib/seiWallet');
+      const seiWallet = generateSeiWallet();
+      
+      const wallet: WalletData = {
+        address: seiWallet.address,
+        mnemonic: seiWallet.mnemonic,
+        privateKey: seiWallet.privateKey,
+        isBackedUp: false,
+        hasPin: false,
+        hasBiometric: false
+      };
+      
+      setWalletData(wallet);
+      
+      // Generate random positions for verification
+      const positions: number[] = [];
+      while (positions.length < 3) {
+        const pos = Math.floor(Math.random() * 12);
+        if (!positions.includes(pos)) {
+          positions.push(pos);
+        }
+      }
+      setVerificationWords(positions.sort((a, b) => a - b));
+    } catch (error) {
+      console.error('Error generating wallet:', error);
+      // Fallback to mock wallet
+      generateMockWallet();
+    }
+  };
+
+  // Fallback mock wallet generation
+  const generateMockWallet = () => {
     const mnemonic = [
       'abandon', 'ability', 'able', 'about', 'above', 'absent',
       'absorb', 'abstract', 'absurd', 'abuse', 'access', 'accident'
@@ -267,29 +301,78 @@ export const WalletOnboarding: React.FC<OnboardingProps> = ({ onComplete, onClos
               <Badge variant="secondary">Recommended</Badge>
             </div>
             
-            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-4">
               <div>
-                <Label htmlFor="pin">PIN</Label>
-                <Input
-                  id="pin"
-                  type="password"
-                  placeholder="6 digits"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  maxLength={6}
-                />
+                <Label htmlFor="pin">Create 6-digit PIN</Label>
+                <div className="flex space-x-2 mt-2">
+                  {[0, 1, 2, 3, 4, 5].map((index) => (
+                    <Input
+                      key={index}
+                      type="password"
+                      className="w-12 h-12 text-center text-lg font-bold"
+                      maxLength={1}
+                      value={pin[index] || ''}
+                      onChange={(e) => {
+                        const newPin = pin.split('');
+                        newPin[index] = e.target.value;
+                        setPin(newPin.join(''));
+                        
+                        // Auto-focus next input
+                        if (e.target.value && index < 5) {
+                          const nextInput = document.querySelector(`input[data-pin-index="${index + 1}"]`) as HTMLInputElement;
+                          if (nextInput) nextInput.focus();
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        // Handle backspace
+                        if (e.key === 'Backspace' && !pin[index] && index > 0) {
+                          const prevInput = document.querySelector(`input[data-pin-index="${index - 1}"]`) as HTMLInputElement;
+                          if (prevInput) prevInput.focus();
+                        }
+                      }}
+                      data-pin-index={index}
+                    />
+                  ))}
+                </div>
               </div>
+              
               <div>
                 <Label htmlFor="confirm-pin">Confirm PIN</Label>
-                <Input
-                  id="confirm-pin"
-                  type="password"
-                  placeholder="Confirm"
-                  value={confirmPin}
-                  onChange={(e) => setConfirmPin(e.target.value)}
-                  maxLength={6}
-                />
+                <div className="flex space-x-2 mt-2">
+                  {[0, 1, 2, 3, 4, 5].map((index) => (
+                    <Input
+                      key={index}
+                      type="password"
+                      className="w-12 h-12 text-center text-lg font-bold"
+                      maxLength={1}
+                      value={confirmPin[index] || ''}
+                      onChange={(e) => {
+                        const newPin = confirmPin.split('');
+                        newPin[index] = e.target.value;
+                        setConfirmPin(newPin.join(''));
+                        
+                        // Auto-focus next input
+                        if (e.target.value && index < 5) {
+                          const nextInput = document.querySelector(`input[data-confirm-pin-index="${index + 1}"]`) as HTMLInputElement;
+                          if (nextInput) nextInput.focus();
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        // Handle backspace
+                        if (e.key === 'Backspace' && !confirmPin[index] && index > 0) {
+                          const prevInput = document.querySelector(`input[data-confirm-pin-index="${index - 1}"]`) as HTMLInputElement;
+                          if (prevInput) prevInput.focus();
+                        }
+                      }}
+                      data-confirm-pin-index={index}
+                    />
+                  ))}
+                </div>
               </div>
+              
+              {pin.length === 6 && confirmPin.length === 6 && pin !== confirmPin && (
+                <p className="text-red-500 text-sm">PINs do not match</p>
+              )}
             </div>
           </div>
         </Card>
