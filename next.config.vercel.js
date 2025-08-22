@@ -1,11 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Standard Vercel deployment (no static export)
-  // output: 'export', // Remove this for standard Vercel deployment
-  trailingSlash: true,
+  // Remove static export for Vercel deployment
+  trailingSlash: false,
   images: {
-    domains: [],
-    unoptimized: false // Can use Next.js Image optimization on Vercel
+    domains: ['api.dexscreener.com'],
+    unoptimized: false
   },
   // PWA optimizations
   compress: true,
@@ -41,10 +40,6 @@ const nextConfig = {
           {
             key: 'Cache-Control',
             value: 'public, max-age=0, must-revalidate'
-          },
-          {
-            key: 'Service-Worker-Allowed',
-            value: '/'
           }
         ]
       },
@@ -59,10 +54,10 @@ const nextConfig = {
       }
     ]
   },
-  // Vercel-specific optimizations
-  experimental: {
-    optimizeCss: true,
-    optimizePackageImports: ['lucide-react', '@radix-ui/react-slot']
+  // Environment variables for client-side
+  env: {
+    NEXT_PUBLIC_SEI_RPC: 'https://rpc.sei-apis.com',
+    NEXT_PUBLIC_SEI_REST: 'https://rest.sei-apis.com',
   }
 }
 

@@ -1,16 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
-  trailingSlash: true,
-  skipTrailingSlashRedirect: true,
-  distDir: 'dist',
+  // Remove static export for Vercel deployment
+  trailingSlash: false,
   images: {
-    unoptimized: true
+    domains: ['api.dexscreener.com'],
+    unoptimized: false
   },
   // PWA optimizations
   compress: true,
   poweredByHeader: false,
-  generateEtags: false,
+  generateEtags: true,
   // Security headers for PWA
   async headers() {
     return [
@@ -54,6 +53,11 @@ const nextConfig = {
         ]
       }
     ]
+  },
+  // Environment variables for client-side
+  env: {
+    NEXT_PUBLIC_SEI_RPC: 'https://rpc.sei-apis.com',
+    NEXT_PUBLIC_SEI_REST: 'https://rest.sei-apis.com',
   }
 }
 
