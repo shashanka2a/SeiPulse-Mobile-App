@@ -7,6 +7,23 @@
 
 A mobile-first Progressive Web App for seamless SEI payments and DeFi tracking.
 
+## 🎯 Problem & Solution
+
+### The Problem
+Crypto payments today feel clunky compared to fintech apps, and blockchain explorers aren't consumer friendly. Users struggle with:
+- Complex UX that intimidates newcomers
+- Fragmented tools for payments vs. blockchain insights
+- High barriers to entry for Web3 adoption
+
+### The Solution
+SeiPulse unifies both—fast, simple payments and real-time blockchain insights in one familiar interface.
+
+### What Makes It Novel
+- **Familiar UX, Crypto-Native**: Feels like Venmo/CashApp but built for Web3
+- **Lightweight Onboarding**: Hooks users into Sei's ecosystem without wallet complexity
+- **Interactive Blockchain Tools**: Watcher dashboards turn explorers into consumer-friendly tools
+- **Broader Appeal**: Attracts not just traders but new users curious about Sei
+
 ## ✨ Features
 
 - 💸 **Send & Receive SEI** - Real blockchain transactions
