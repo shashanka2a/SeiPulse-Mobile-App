@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, ArrowUpRight, ArrowDownLeft, Eye, EyeOff, Settings, Bell, Sun, Moon, Wallet } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, ArrowUpRight, ArrowDownLeft, Eye, EyeOff, Settings, Bell, Sun, Moon, Wallet, RefreshCw } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
+import { Badge } from './ui/badge';
 import { useTheme } from '../pages/index';
-import { WalletOnboarding } from './WalletOnboarding';
+import { useWallet } from '../hooks/useWallet';
+import { useBalances } from '../hooks/useBalances';
 
 interface Transaction {
   id: string;
@@ -45,113 +47,15 @@ const mockTransactions: Transaction[] = [
   }
 ];
 
-interface WalletData {
-  address: string;
-  mnemonic: string[];
-  privateKey: string;
-  isBackedUp: boolean;
-  hasPin: boolean;
-  hasBiometric: boolean;
-}
-
 export const HomeTab: React.FC = () => {
   const { isDark, toggleTheme } = useTheme();
   const [showBalance, setShowBalance] = useState(true);
-  const [hasWallet, setHasWallet] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [walletData, setWalletData] = useState<WalletData | null>(null);
-  const [balance, setBalance] = useState(0);
-
-  // Check if user has a wallet on component mount
-  useEffect(() => {
-    const savedWallet = localStorage.getItem('seipulse-wallet');
-    const savedBalance = localStorage.getItem('seipulse-sei-balance');
-    
-    if (savedWallet) {
-      setWalletData(JSON.parse(savedWallet));
-      setHasWallet(true);
-      setBalance(savedBalance ? parseFloat(savedBalance) : 2847.32);
-    } else {
-      // Show onboarding for new users
-      setShowOnboarding(true);
-    }
-  }, []);
-
-  const handleWalletCreated = (newWalletData: WalletData) => {
-    setWalletData(newWalletData);
-    setHasWallet(true);
-    setShowOnboarding(false);
-    setBalance(2847.32); // Give new users some starting balance
-    
-    // Save wallet data
-    localStorage.setItem('seipulse-wallet', JSON.stringify(newWalletData));
-    localStorage.setItem('seipulse-sei-balance', '2847.32');
-  };
-
-  // If no wallet, show onboarding
-  if (!hasWallet && showOnboarding) {
-    return (
-      <WalletOnboarding
-        onComplete={handleWalletCreated}
-        onClose={() => setShowOnboarding(false)}
-      />
-    );
-  }
-
-  // If no wallet and onboarding was closed, show wallet setup prompt
-  if (!hasWallet && !showOnboarding) {
-    return (
-      <div className="p-4 space-y-6">
-        <div className="pt-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                SeiPulse
-              </h1>
-              <p className="text-muted-foreground text-sm">Welcome! 👋</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={toggleTheme}>
-                {isDark ? <Sun size={20} /> : <Moon size={20} />}
-              </Button>
-              <Button variant="ghost" size="icon">
-                <Settings size={20} />
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <Card className="p-8 text-center space-y-6">
-          <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto">
-            <Wallet size={40} className="text-white" />
-          </div>
-          
-          <div>
-            <h2 className="text-xl font-bold mb-2">No Wallet Found</h2>
-            <p className="text-muted-foreground">
-              To use SeiPulse, you need a Sei wallet. We&apos;ll help you create one securely in just a few steps.
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            <Button 
-              className="w-full h-12" 
-              onClick={() => setShowOnboarding(true)}
-            >
-              Create Sei Wallet
-            </Button>
-            <Button variant="outline" className="w-full h-12">
-              Import Existing Wallet
-            </Button>
-          </div>
-
-          <div className="text-xs text-muted-foreground">
-            Your wallet is created locally and encrypted. We never store your private keys.
-          </div>
-        </Card>
-      </div>
-    );
-  }
+  
+  // Blockchain hooks
+  const { address, isConnected, connectKeplr, client } = useWallet();
+  const { native, tokens, loading: balancesLoading, refreshBalances } = useBalances(address, client);
+  
+  const totalBalance = native ? parseFloat(native.formatted) : 0;
 
   return (
     <div className="p-4 space-y-6">
@@ -161,9 +65,21 @@ export const HomeTab: React.FC = () => {
           <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
             SeiPulse
           </h1>
-          <p className="text-muted-foreground text-sm">Good morning! 👋</p>
+          <p className="text-muted-foreground text-sm">
+            {isConnected ? `Connected: ${address?.slice(0, 8)}...${address?.slice(-6)}` : 'Welcome! 👋'}
+          </p>
         </div>
         <div className="flex items-center gap-2">
+          {isConnected && (
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={refreshBalances}
+              disabled={balancesLoading}
+            >
+              <RefreshCw size={20} className={balancesLoading ? 'animate-spin' : ''} />
+            </Button>
+          )}
           <Button variant="ghost" size="icon" onClick={toggleTheme}>
             {isDark ? <Sun size={20} /> : <Moon size={20} />}
           </Button>
@@ -176,34 +92,83 @@ export const HomeTab: React.FC = () => {
         </div>
       </div>
 
-      {/* Balance Card */}
-      <Card className="p-6 bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-pink-500/10 border-0 backdrop-blur-sm">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-muted-foreground">Total Balance</p>
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => setShowBalance(!showBalance)}
-              className="h-8 w-8"
-            >
-              {showBalance ? <Eye size={16} /> : <EyeOff size={16} />}
-            </Button>
+      {/* Wallet Connection / Balance Card */}
+      {!isConnected ? (
+        <Card className="p-6 bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-pink-500/10 border-0 backdrop-blur-sm">
+          <div className="text-center space-y-4">
+            <Wallet size={48} className="mx-auto text-muted-foreground" />
+            <div>
+              <h3 className="text-lg font-medium mb-2">Connect Your Wallet</h3>
+              <p className="text-muted-foreground text-sm mb-4">
+                Connect your Sei wallet to view your balance and make transactions
+              </p>
+              <Button onClick={connectKeplr} className="w-full">
+                Connect Keplr Wallet
+              </Button>
+            </div>
           </div>
-          <div className="space-y-1">
-            <h2 className="text-3xl font-bold">
-              {showBalance ? `$${balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '••••••'}
-            </h2>
-            <p className="text-green-500 text-sm">+$124.50 this week</p>
+        </Card>
+      ) : (
+        <Card className="p-6 bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-pink-500/10 border-0 backdrop-blur-sm">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <p className="text-muted-foreground">SEI Balance</p>
+                <Badge variant="secondary" className="text-xs">Live</Badge>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => setShowBalance(!showBalance)}
+                className="h-8 w-8"
+              >
+                {showBalance ? <Eye size={16} /> : <EyeOff size={16} />}
+              </Button>
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-3xl font-bold">
+                {balancesLoading ? (
+                  <div className="flex items-center space-x-2">
+                    <RefreshCw size={24} className="animate-spin" />
+                    <span>Loading...</span>
+                  </div>
+                ) : showBalance ? (
+                  `${totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 6 })} SEI`
+                ) : (
+                  '••••••'
+                )}
+              </h2>
+              {native && (
+                <p className="text-muted-foreground text-sm">
+                  Raw: {native.amount} usei
+                </p>
+              )}
+            </div>
+            
+            {/* Token Balances */}
+            {tokens.length > 0 && (
+              <div className="space-y-2 pt-2 border-t">
+                <p className="text-sm font-medium">Other Tokens</p>
+                <div className="space-y-1">
+                  {tokens.map((token) => (
+                    <div key={token.denom} className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{token.symbol}</span>
+                      <span className="font-medium">{token.formatted}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      </Card>
+        </Card>
+      )}
 
       {/* Action Buttons */}
       <div className="grid grid-cols-2 gap-4">
         <Button 
           className="h-14 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0"
           size="lg"
+          disabled={!isConnected}
         >
           <ArrowUpRight className="mr-2" size={20} />
           Pay
@@ -211,6 +176,7 @@ export const HomeTab: React.FC = () => {
         <Button 
           className="h-14 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white border-0"
           size="lg"
+          disabled={!isConnected}
         >
           <ArrowDownLeft className="mr-2" size={20} />
           Request
@@ -267,7 +233,7 @@ export const HomeTab: React.FC = () => {
                     <p className={`font-medium ${
                       transaction.type === 'received' ? 'text-green-600' : 'text-foreground'
                     }`}>
-                      {transaction.type === 'received' ? '+' : '-'}${transaction.amount.toFixed(2)}
+                      {transaction.type === 'received' ? '+' : '-'}{transaction.amount.toFixed(2)} SEI
                     </p>
                     <p className="text-xs text-muted-foreground">{transaction.timestamp}</p>
                   </div>

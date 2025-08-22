@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Eye, Star, Plus, BarChart3, PieChart, Activity, X, Search, Trash2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Eye, Star, Plus, BarChart3, Activity, RefreshCw, Wallet, Coins, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
@@ -7,430 +7,278 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-
-interface Asset {
-  id: string;
-  name: string;
-  symbol: string;
-  price: number;
-  change24h: number;
-  marketCap: string;
-  volume: string;
-  trending?: boolean;
-}
-
-interface NFTCollection {
-  id: string;
-  name: string;
-  floorPrice: number;
-  change24h: number;
-  volume: string;
-  items: number;
-}
-
-interface WalletData {
-  address: string;
-  name: string;
-  balance: number;
-  change24h: number;
-  tokens: number;
-  nfts: number;
-}
-
-const mockMemecoins: Asset[] = [
-  { id: '1', name: 'SeiDoge', symbol: 'SDOGE', price: 0.000234, change24h: 45.2, marketCap: '$2.3M', volume: '$456K', trending: true },
-  { id: '2', name: 'PepeToken', symbol: 'PEPE', price: 0.00000123, change24h: -12.5, marketCap: '$1.8M', volume: '$234K' },
-  { id: '3', name: 'ShibaInu', symbol: 'SHIB', price: 0.0000087, change24h: 23.1, marketCap: '$4.2M', volume: '$789K', trending: true },
-  { id: '4', name: 'DogeKing', symbol: 'DKING', price: 0.00456, change24h: -8.7, marketCap: '$892K', volume: '$123K' },
-];
-
-const mockNFTs: NFTCollection[] = [
-  { id: '1', name: 'Sei Punks', floorPrice: 2.4, change24h: 15.3, volume: '45.2 SEI', items: 10000 },
-  { id: '2', name: 'Space Cats', floorPrice: 1.8, change24h: -5.2, volume: '23.1 SEI', items: 5000 },
-  { id: '3', name: 'Cyber Bears', floorPrice: 3.1, change24h: 28.7, volume: '67.8 SEI', items: 7500 },
-];
-
-const mockWallets: WalletData[] = [
-  { address: 'sei1abc...def', name: 'Main Wallet', balance: 15234.56, change24h: 12.3, tokens: 25, nfts: 12 },
-  { address: 'sei1xyz...789', name: 'Trading Wallet', balance: 8967.23, change24h: -3.2, tokens: 18, nfts: 5 },
-];
+import { useWallet } from '../hooks/useWallet';
+import { usePrices } from '../hooks/usePrices';
+import { useWatcher } from '../hooks/useWatcher';
+import { useNFTs } from '../hooks/useNFTs';
 
 export const WatchTab: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('memecoins');
-  const [watchlist, setWatchlist] = useState<string[]>(['1', '3']);
-  const [watchedNFTs, setWatchedNFTs] = useState<string[]>(['1']);
-  const [watchedWallets, setWatchedWallets] = useState<string[]>(['sei1abc...def']);
+  const [activeTab, setActiveTab] = useState('tokens');
   
-  // Custom added items
-  const [customMemecoins, setCustomMemecoins] = useState<Asset[]>([]);
-  const [customNFTs, setCustomNFTs] = useState<NFTCollection[]>([]);
-  const [customWallets, setCustomWallets] = useState<WalletData[]>([]);
+  // Blockchain hooks
+  const { client, address, isConnected, connectKeplr } = useWallet();
+  const { prices, loading: pricesLoading, refreshPrices, getPrice } = usePrices();
+  const { 
+    watchedAddresses, 
+    watchedTokens, 
+    isConnected: watcherConnected,
+    loading: watcherLoading,
+    addWatchedAddress,
+    removeWatchedAddress,
+    addWatchedToken,
+    removeWatchedToken,
+    refreshWatchedData
+  } = useWatcher(client);
+  const { nfts, loading: nftsLoading, refreshNFTs } = useNFTs(address, client);
   
   // Dialog states
   const [showAddToken, setShowAddToken] = useState(false);
-  const [showAddNFT, setShowAddNFT] = useState(false);
   const [showAddWallet, setShowAddWallet] = useState(false);
   
   // Form states
-  const [tokenForm, setTokenForm] = useState({ name: '', symbol: '', address: '' });
-  const [nftForm, setNftForm] = useState({ name: '', address: '' });
+  const [tokenForm, setTokenForm] = useState({ symbol: '', contractAddress: '' });
   const [walletForm, setWalletForm] = useState({ name: '', address: '' });
 
-  // Load from localStorage on mount
+  // Auto-refresh data periodically
   useEffect(() => {
-    const savedWatchlist = localStorage.getItem('seipulse-watchlist');
-    const savedNFTs = localStorage.getItem('seipulse-watched-nfts');
-    const savedWallets = localStorage.getItem('seipulse-watched-wallets');
-    const savedCustomMemecoins = localStorage.getItem('seipulse-custom-memecoins');
-    const savedCustomNFTs = localStorage.getItem('seipulse-custom-nfts');
-    const savedCustomWallets = localStorage.getItem('seipulse-custom-wallets');
+    const interval = setInterval(() => {
+      refreshPrices();
+      refreshWatchedData();
+      if (address && client) {
+        refreshNFTs();
+      }
+    }, 60000); // Refresh every minute
+
+    return () => clearInterval(interval);
+  }, [refreshPrices, refreshWatchedData, refreshNFTs, address, client]);
+
+  const handleAddToken = () => {
+    if (!tokenForm.symbol) return;
     
-    if (savedWatchlist) setWatchlist(JSON.parse(savedWatchlist));
-    if (savedNFTs) setWatchedNFTs(JSON.parse(savedNFTs));
-    if (savedWallets) setWatchedWallets(JSON.parse(savedWallets));
-    if (savedCustomMemecoins) setCustomMemecoins(JSON.parse(savedCustomMemecoins));
-    if (savedCustomNFTs) setCustomNFTs(JSON.parse(savedCustomNFTs));
-    if (savedCustomWallets) setCustomWallets(JSON.parse(savedCustomWallets));
-  }, []);
-
-  // Save to localStorage whenever state changes
-  useEffect(() => {
-    localStorage.setItem('seipulse-watchlist', JSON.stringify(watchlist));
-  }, [watchlist]);
-
-  useEffect(() => {
-    localStorage.setItem('seipulse-watched-nfts', JSON.stringify(watchedNFTs));
-  }, [watchedNFTs]);
-
-  useEffect(() => {
-    localStorage.setItem('seipulse-watched-wallets', JSON.stringify(watchedWallets));
-  }, [watchedWallets]);
-
-  useEffect(() => {
-    localStorage.setItem('seipulse-custom-memecoins', JSON.stringify(customMemecoins));
-  }, [customMemecoins]);
-
-  useEffect(() => {
-    localStorage.setItem('seipulse-custom-nfts', JSON.stringify(customNFTs));
-  }, [customNFTs]);
-
-  useEffect(() => {
-    localStorage.setItem('seipulse-custom-wallets', JSON.stringify(customWallets));
-  }, [customWallets]);
-
-  const toggleWatchlist = (id: string) => {
-    setWatchlist(prev => 
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
-  };
-
-  const toggleNFTWatch = (id: string) => {
-    setWatchedNFTs(prev => 
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
-  };
-
-  const toggleWalletWatch = (address: string) => {
-    setWatchedWallets(prev => 
-      prev.includes(address) ? prev.filter(i => i !== address) : [...prev, address]
-    );
-  };
-
-  const addCustomToken = () => {
-    if (!tokenForm.name || !tokenForm.symbol) return;
-    
-    const newToken: Asset = {
-      id: `custom-${Date.now()}`,
-      name: tokenForm.name,
-      symbol: tokenForm.symbol.toUpperCase(),
-      price: Math.random() * 0.01, // Mock price
-      change24h: (Math.random() - 0.5) * 100,
-      marketCap: `$${(Math.random() * 10).toFixed(1)}M`,
-      volume: `$${(Math.random() * 1000).toFixed(0)}K`,
-      trending: Math.random() > 0.7
-    };
-    
-    setCustomMemecoins(prev => [...prev, newToken]);
-    setWatchlist(prev => [...prev, newToken.id]);
-    setTokenForm({ name: '', symbol: '', address: '' });
+    addWatchedToken(tokenForm.symbol.toUpperCase(), tokenForm.contractAddress || undefined);
+    setTokenForm({ symbol: '', contractAddress: '' });
     setShowAddToken(false);
   };
 
-  const addCustomNFT = () => {
-    if (!nftForm.name) return;
-    
-    const newNFT: NFTCollection = {
-      id: `custom-nft-${Date.now()}`,
-      name: nftForm.name,
-      floorPrice: Math.random() * 10,
-      change24h: (Math.random() - 0.5) * 50,
-      volume: `${(Math.random() * 100).toFixed(1)} SEI`,
-      items: Math.floor(Math.random() * 10000) + 1000
-    };
-    
-    setCustomNFTs(prev => [...prev, newNFT]);
-    setWatchedNFTs(prev => [...prev, newNFT.id]);
-    setNftForm({ name: '', address: '' });
-    setShowAddNFT(false);
-  };
-
-  const addCustomWallet = () => {
+  const handleAddWallet = () => {
     if (!walletForm.address) return;
     
-    const newWallet: WalletData = {
-      address: walletForm.address,
-      name: walletForm.name || 'Custom Wallet',
-      balance: Math.random() * 50000,
-      change24h: (Math.random() - 0.5) * 20,
-      tokens: Math.floor(Math.random() * 50),
-      nfts: Math.floor(Math.random() * 20)
-    };
-    
-    setCustomWallets(prev => [...prev, newWallet]);
-    setWatchedWallets(prev => [...prev, newWallet.address]);
+    addWatchedAddress(walletForm.address, walletForm.name || 'Custom Wallet');
     setWalletForm({ name: '', address: '' });
     setShowAddWallet(false);
   };
 
-  const removeCustomToken = (id: string) => {
-    setCustomMemecoins(prev => prev.filter(token => token.id !== id));
-    setWatchlist(prev => prev.filter(tokenId => tokenId !== id));
+  const handleRefreshAll = () => {
+    refreshPrices();
+    refreshWatchedData();
+    if (address && client) {
+      refreshNFTs();
+    }
   };
 
-  const removeCustomNFT = (id: string) => {
-    setCustomNFTs(prev => prev.filter(nft => nft.id !== id));
-    setWatchedNFTs(prev => prev.filter(nftId => nftId !== id));
-  };
-
-  const removeCustomWallet = (address: string) => {
-    setCustomWallets(prev => prev.filter(wallet => wallet.address !== address));
-    setWatchedWallets(prev => prev.filter(addr => addr !== address));
-  };
-
-  // Combine mock and custom data
-  const allMemecoins = [...mockMemecoins, ...customMemecoins];
-  const allNFTs = [...mockNFTs, ...customNFTs];
-  const allWallets = [...mockWallets, ...customWallets];
-
-  const MemecoinCard = ({ asset, showRemove = false }: { asset: Asset; showRemove?: boolean }) => (
-    <Card className="p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center">
-            <span className="text-white font-bold text-sm">{asset.symbol[0]}</span>
+  const TokenCard = ({ token }: { token: any }) => {
+    const priceData = getPrice(token.symbol);
+    
+    return (
+      <Card className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center">
+              <Coins size={20} className="text-white" />
+            </div>
+            <div>
+              <p className="font-medium">{token.symbol}</p>
+              {token.contractAddress && (
+                <p className="text-xs text-muted-foreground font-mono">
+                  {token.contractAddress.slice(0, 8)}...{token.contractAddress.slice(-6)}
+                </p>
+              )}
+            </div>
           </div>
-          <div>
-            <p className="font-medium">{asset.name}</p>
-            <p className="text-sm text-muted-foreground">{asset.symbol}</p>
-            {asset.id.startsWith('custom-') && (
-              <Badge variant="outline" className="text-xs mt-1">Custom</Badge>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center space-x-2">
-          {asset.trending && (
-            <Badge variant="secondary" className="text-xs">
-              🔥 Trending
-            </Badge>
-          )}
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={() => toggleWatchlist(asset.id)}
-            className="h-8 w-8"
-          >
-            <Star 
-              size={16} 
-              className={watchlist.includes(asset.id) ? 'fill-yellow-400 text-yellow-400' : ''} 
-            />
-          </Button>
-          {showRemove && asset.id.startsWith('custom-') && (
+          <div className="flex items-center space-x-2">
             <Button 
               variant="ghost" 
               size="icon"
-              onClick={() => removeCustomToken(asset.id)}
+              onClick={() => removeWatchedToken(token.symbol)}
               className="h-8 w-8 text-red-500 hover:text-red-700"
             >
               <Trash2 size={16} />
             </Button>
-          )}
-        </div>
-      </div>
-      
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-lg font-bold">${asset.price.toFixed(6)}</span>
-          <div className={`flex items-center space-x-1 ${asset.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-            {asset.change24h >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-            <span className="font-medium">{Math.abs(asset.change24h).toFixed(1)}%</span>
           </div>
         </div>
         
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <p className="text-muted-foreground">Market Cap</p>
-            <p className="font-medium">{asset.marketCap}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Volume 24h</p>
-            <p className="font-medium">{asset.volume}</p>
-          </div>
-        </div>
-      </div>
-    </Card>
-  );
-
-  const NFTCard = ({ collection, showRemove = false }: { collection: NFTCollection; showRemove?: boolean }) => (
-    <Card className="p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg"></div>
-          <div>
-            <p className="font-medium">{collection.name}</p>
-            <p className="text-sm text-muted-foreground">{collection.items.toLocaleString()} items</p>
-            {collection.id.startsWith('custom-') && (
-              <Badge variant="outline" className="text-xs mt-1">Custom</Badge>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8"
-            onClick={() => toggleNFTWatch(collection.id)}
-          >
-            <Eye 
-              size={16} 
-              className={watchedNFTs.includes(collection.id) ? 'text-blue-500' : ''} 
-            />
-          </Button>
-          {showRemove && collection.id.startsWith('custom-') && (
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => removeCustomNFT(collection.id)}
-              className="h-8 w-8 text-red-500 hover:text-red-700"
-            >
-              <Trash2 size={16} />
-            </Button>
+        <div className="space-y-2">
+          {priceData ? (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-lg font-bold">${priceData.price.toFixed(6)}</span>
+                <div className={`flex items-center space-x-1 ${priceData.priceChange24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {priceData.priceChange24h >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+                  <span className="font-medium">{Math.abs(priceData.priceChange24h).toFixed(1)}%</span>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Volume 24h</p>
+                  <p className="font-medium">${priceData.volume24h.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Last Updated</p>
+                  <p className="font-medium">{new Date(priceData.lastUpdated).toLocaleTimeString()}</p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-muted-foreground">Price data not available</p>
+            </div>
           )}
         </div>
-      </div>
-      
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-lg font-bold">{collection.floorPrice.toFixed(2)} SEI</span>
-          <div className={`flex items-center space-x-1 ${collection.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-            {collection.change24h >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-            <span className="font-medium">{Math.abs(collection.change24h).toFixed(1)}%</span>
-          </div>
-        </div>
-        
-        <div className="text-sm">
-          <p className="text-muted-foreground">Volume 24h: {collection.volume}</p>
-        </div>
-      </div>
-    </Card>
-  );
+      </Card>
+    );
+  };
 
-  const WalletCard = ({ wallet, showRemove = false }: { wallet: WalletData; showRemove?: boolean }) => (
+  const WalletCard = ({ wallet }: { wallet: any }) => (
     <Card className="p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex-1">
           <div className="flex items-center space-x-2">
-            <p className="font-medium">{wallet.name}</p>
-            {customWallets.some(w => w.address === wallet.address) && (
-              <Badge variant="outline" className="text-xs">Custom</Badge>
-            )}
+            <Wallet size={20} className="text-blue-500" />
+            <p className="font-medium">{wallet.label}</p>
           </div>
           <p className="text-sm text-muted-foreground font-mono">
-            {wallet.address.slice(0, 8)}...{wallet.address.slice(-6)}
+            {wallet.address.slice(0, 12)}...{wallet.address.slice(-8)}
           </p>
         </div>
         <div className="flex items-center space-x-2">
           <Button 
             variant="ghost" 
-            size="icon" 
-            className="h-8 w-8"
-            onClick={() => toggleWalletWatch(wallet.address)}
+            size="icon"
+            onClick={() => removeWatchedAddress(wallet.address)}
+            className="h-8 w-8 text-red-500 hover:text-red-700"
           >
-            <BarChart3 
-              size={16} 
-              className={watchedWallets.includes(wallet.address) ? 'text-blue-500' : ''} 
-            />
+            <Trash2 size={16} />
           </Button>
-          {showRemove && customWallets.some(w => w.address === wallet.address) && (
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => removeCustomWallet(wallet.address)}
-              className="h-8 w-8 text-red-500 hover:text-red-700"
-            >
-              <Trash2 size={16} />
-            </Button>
-          )}
         </div>
       </div>
       
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-xl font-bold">${wallet.balance.toLocaleString()}</span>
-          <div className={`flex items-center space-x-1 ${wallet.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-            {wallet.change24h >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-            <span className="font-medium">{Math.abs(wallet.change24h).toFixed(1)}%</span>
-          </div>
+          <span className="text-xl font-bold">
+            {wallet.balance ? `${parseFloat(wallet.balance).toFixed(4)} SEI` : 'Loading...'}
+          </span>
         </div>
         
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <p className="text-muted-foreground">Tokens</p>
-            <p className="font-medium">{wallet.tokens}</p>
+        {wallet.lastUpdated && (
+          <div className="text-sm">
+            <p className="text-muted-foreground">
+              Last updated: {new Date(wallet.lastUpdated).toLocaleTimeString()}
+            </p>
           </div>
-          <div>
-            <p className="text-muted-foreground">NFTs</p>
-            <p className="font-medium">{wallet.nfts}</p>
-          </div>
-        </div>
+        )}
       </div>
     </Card>
   );
+
+  const NFTCard = ({ nft }: { nft: any }) => (
+    <Card className="p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg flex items-center justify-center">
+            <ImageIcon size={20} className="text-white" />
+          </div>
+          <div>
+            <p className="font-medium">{nft.name}</p>
+            <p className="text-sm text-muted-foreground">{nft.collection}</p>
+            <p className="text-xs text-muted-foreground font-mono">
+              #{nft.tokenId}
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      {nft.image && (
+        <div className="mt-3">
+          <img 
+            src={nft.image} 
+            alt={nft.name}
+            className="w-full h-32 object-cover rounded-lg"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        </div>
+      )}
+      
+      {nft.attributes && nft.attributes.length > 0 && (
+        <div className="mt-3 space-y-1">
+          <p className="text-sm font-medium">Attributes:</p>
+          <div className="flex flex-wrap gap-1">
+            {nft.attributes.slice(0, 3).map((attr: any, index: number) => (
+              <Badge key={index} variant="outline" className="text-xs">
+                {attr.trait_type}: {attr.value}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+
+  // Watch functionality is now independent of wallet connection
 
   return (
     <div className="p-4 space-y-6">
       {/* Header */}
       <div className="pt-4">
-        <h1 className="text-2xl font-bold mb-2">Watch</h1>
-        <p className="text-muted-foreground">Track your favorite assets and wallets</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold mb-2">Watch</h1>
+            <p className="text-muted-foreground">Track real-time blockchain data</p>
+          </div>
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={handleRefreshAll}
+            disabled={pricesLoading || watcherLoading}
+          >
+            <RefreshCw size={20} className={pricesLoading || watcherLoading ? 'animate-spin' : ''} />
+          </Button>
+        </div>
       </div>
 
-      {/* AI Market Insights */}
-      <Card className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 border-0">
+      {/* Market Status */}
+      <Card className="p-4 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950 dark:to-blue-950 border-0">
         <div className="flex items-start space-x-3">
           <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
             <Activity size={16} className="text-white" />
           </div>
           <div className="flex-1">
-            <h3 className="font-medium mb-1">AI Market Insights</h3>
+            <h3 className="font-medium mb-1">Market Data</h3>
             <p className="text-sm text-muted-foreground">
-              Memecoin sector showing +23% growth. SeiDoge trending due to community events. 
-              NFT floor prices recovering across major collections.
+              Live prices and data from Sei ecosystem • No wallet required
             </p>
           </div>
+          {isConnected && (
+            <Badge variant="secondary" className="text-xs">
+              Wallet Connected
+            </Badge>
+          )}
         </div>
       </Card>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="memecoins">Memecoins</TabsTrigger>
+          <TabsTrigger value="tokens">Tokens</TabsTrigger>
           <TabsTrigger value="nfts">NFTs</TabsTrigger>
           <TabsTrigger value="wallets">Wallets</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="memecoins" className="space-y-4 mt-6">
+        <TabsContent value="tokens" className="space-y-4 mt-6">
           <div className="flex items-center justify-between">
-            <h3 className="font-medium">Trending Memecoins</h3>
+            <h3 className="font-medium">Watched Tokens ({watchedTokens.length})</h3>
             <Dialog open={showAddToken} onOpenChange={setShowAddToken}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm">
@@ -438,43 +286,40 @@ export const WatchTab: React.FC = () => {
                   Add Token
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Add Custom Token</DialogTitle>
+                  <DialogTitle>
+                    Add Token to Watch
+                  </DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="token-name">Token Name</Label>
-                    <Input
-                      id="token-name"
-                      placeholder="e.g., SeiDoge"
-                      value={tokenForm.name}
-                      onChange={(e) => setTokenForm(prev => ({ ...prev, name: e.target.value }))}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="token-symbol">Symbol</Label>
+                <div className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="token-symbol">
+                      Token Symbol
+                    </Label>
                     <Input
                       id="token-symbol"
-                      placeholder="e.g., SDOGE"
+                      placeholder="e.g., SEI, USDC"
                       value={tokenForm.symbol}
                       onChange={(e) => setTokenForm(prev => ({ ...prev, symbol: e.target.value }))}
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="token-address">Contract Address (Optional)</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="token-contract">
+                      Contract Address (Optional)
+                    </Label>
                     <Input
-                      id="token-address"
+                      id="token-contract"
                       placeholder="sei1..."
-                      value={tokenForm.address}
-                      onChange={(e) => setTokenForm(prev => ({ ...prev, address: e.target.value }))}
+                      value={tokenForm.contractAddress}
+                      onChange={(e) => setTokenForm(prev => ({ ...prev, contractAddress: e.target.value }))}
                     />
                   </div>
-                  <div className="flex space-x-2">
-                    <Button onClick={addCustomToken} className="flex-1">
+                  <div className="flex space-x-2 pt-4">
+                    <Button onClick={handleAddToken} className="flex-1" disabled={!tokenForm.symbol}>
                       Add Token
                     </Button>
-                    <Button variant="outline" onClick={() => setShowAddToken(false)}>
+                    <Button variant="outline" onClick={() => setShowAddToken(false)} className="flex-1">
                       Cancel
                     </Button>
                   </div>
@@ -484,94 +329,135 @@ export const WatchTab: React.FC = () => {
           </div>
           
           <div className="space-y-3">
-            {allMemecoins.map((asset) => (
-              <MemecoinCard key={asset.id} asset={asset} showRemove />
-            ))}
+            {watchedTokens.length === 0 ? (
+              <Card className="p-8 text-center">
+                <Coins size={48} className="mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground">No tokens being watched</p>
+                <p className="text-sm text-muted-foreground mt-1">Add tokens to track their prices</p>
+              </Card>
+            ) : (
+              watchedTokens.map((token) => (
+                <TokenCard key={token.symbol} token={token} />
+              ))
+            )}
           </div>
 
-          {watchlist.length > 0 && (
-            <>
-              <h3 className="font-medium pt-4">Your Watchlist ({watchlist.length})</h3>
-              <div className="space-y-3">
-                {allMemecoins
-                  .filter(asset => watchlist.includes(asset.id))
-                  .map((asset) => (
-                    <MemecoinCard key={asset.id} asset={asset} showRemove />
-                  ))}
-              </div>
-            </>
-          )}
+          {/* Popular tokens suggestion */}
+          <div className="space-y-3">
+            <h3 className="font-medium">Popular Tokens</h3>
+            <div className="grid grid-cols-2 gap-2">
+              {['SEI', 'USDC', 'USDT'].map((symbol) => (
+                <Button
+                  key={symbol}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addWatchedToken(symbol)}
+                  disabled={watchedTokens.some(t => t.symbol === symbol)}
+                >
+                  <Plus size={14} className="mr-1" />
+                  {symbol}
+                </Button>
+              ))}
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="nfts" className="space-y-4 mt-6">
           <div className="flex items-center justify-between">
-            <h3 className="font-medium">Popular Collections</h3>
-            <Dialog open={showAddNFT} onOpenChange={setShowAddNFT}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Plus size={16} className="mr-2" />
-                  Add Collection
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add NFT Collection</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="nft-name">Collection Name</Label>
-                    <Input
-                      id="nft-name"
-                      placeholder="e.g., Sei Punks"
-                      value={nftForm.name}
-                      onChange={(e) => setNftForm(prev => ({ ...prev, name: e.target.value }))}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="nft-address">Contract Address (Optional)</Label>
-                    <Input
-                      id="nft-address"
-                      placeholder="sei1..."
-                      value={nftForm.address}
-                      onChange={(e) => setNftForm(prev => ({ ...prev, address: e.target.value }))}
-                    />
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button onClick={addCustomNFT} className="flex-1">
-                      Add Collection
-                    </Button>
-                    <Button variant="outline" onClick={() => setShowAddNFT(false)}>
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <h3 className="font-medium">NFT Collections</h3>
+            {isConnected && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={refreshNFTs}
+                disabled={nftsLoading}
+              >
+                <RefreshCw size={16} className={`mr-2 ${nftsLoading ? 'animate-spin' : ''}`} />
+                Your NFTs
+              </Button>
+            )}
           </div>
           
           <div className="space-y-3">
-            {allNFTs.map((collection) => (
-              <NFTCard key={collection.id} collection={collection} showRemove />
-            ))}
-          </div>
+            {/* Popular NFT Collections - Always visible */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium text-muted-foreground">Popular Collections</h4>
+              {[
+                { name: 'Sei Punks', floor: '2.4 SEI', volume: '45.2 SEI', change: '+15.3%', items: '10,000' },
+                { name: 'Space Cats', floor: '1.8 SEI', volume: '23.1 SEI', change: '-5.2%', items: '5,000' },
+                { name: 'Cyber Bears', floor: '3.1 SEI', volume: '67.8 SEI', change: '+28.7%', items: '7,500' },
+                { name: 'Sei Apes', floor: '4.2 SEI', volume: '89.3 SEI', change: '+42.1%', items: '8,888' },
+              ].map((collection, index) => (
+                <Card key={index} className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg flex items-center justify-center">
+                        <ImageIcon size={20} className="text-white" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{collection.name}</p>
+                        <p className="text-sm text-muted-foreground">{collection.items} items</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">{collection.floor}</p>
+                      <p className={`text-xs ${collection.change.startsWith('+') ? 'text-green-500' : 'text-red-500'}`}>
+                        {collection.change}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Volume 24h: {collection.volume}
+                  </div>
+                </Card>
+              ))}
+            </div>
 
-          {watchedNFTs.length > 0 && (
-            <>
-              <h3 className="font-medium pt-4">Watched Collections ({watchedNFTs.length})</h3>
-              <div className="space-y-3">
-                {allNFTs
-                  .filter(collection => watchedNFTs.includes(collection.id))
-                  .map((collection) => (
-                    <NFTCard key={collection.id} collection={collection} showRemove />
-                  ))}
+            {/* Personal NFTs Section */}
+            {isConnected ? (
+              <div className="space-y-3 pt-4 border-t">
+                <h4 className="text-sm font-medium text-muted-foreground">Your NFTs ({nfts.length})</h4>
+                {nftsLoading ? (
+                  <Card className="p-8 text-center">
+                    <RefreshCw size={48} className="mx-auto mb-4 text-muted-foreground animate-spin" />
+                    <p className="text-muted-foreground">Loading your NFTs...</p>
+                  </Card>
+                ) : nfts.length === 0 ? (
+                  <Card className="p-8 text-center">
+                    <ImageIcon size={48} className="mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">No NFTs found</p>
+                    <p className="text-sm text-muted-foreground mt-1">NFTs you own will appear here</p>
+                  </Card>
+                ) : (
+                  nfts.map((nft) => (
+                    <NFTCard key={`${nft.contractAddress}-${nft.tokenId}`} nft={nft} />
+                  ))
+                )}
               </div>
-            </>
-          )}
+            ) : (
+              <Card className="p-4 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800 mt-4">
+                <div className="text-center">
+                  <Wallet size={24} className="mx-auto mb-2 text-blue-500" />
+                  <p className="text-sm text-blue-700 dark:text-blue-300 mb-2">
+                    Connect your wallet to view your NFT collection
+                  </p>
+                  <Button 
+                    onClick={connectKeplr} 
+                    variant="outline" 
+                    size="sm" 
+                    className="border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-900"
+                  >
+                    Connect Wallet
+                  </Button>
+                </div>
+              </Card>
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="wallets" className="space-y-4 mt-6">
           <div className="flex items-center justify-between">
-            <h3 className="font-medium">Tracked Wallets</h3>
+            <h3 className="font-medium">Watched Wallets ({watchedAddresses.length})</h3>
             <Dialog open={showAddWallet} onOpenChange={setShowAddWallet}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm">
@@ -579,13 +465,17 @@ export const WatchTab: React.FC = () => {
                   Add Wallet
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Add Wallet to Track</DialogTitle>
+                  <DialogTitle>
+                    Add Wallet to Watch
+                  </DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="wallet-name">Wallet Name (Optional)</Label>
+                <div className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="wallet-name">
+                      Wallet Name (Optional)
+                    </Label>
                     <Input
                       id="wallet-name"
                       placeholder="e.g., Trading Wallet"
@@ -593,8 +483,10 @@ export const WatchTab: React.FC = () => {
                       onChange={(e) => setWalletForm(prev => ({ ...prev, name: e.target.value }))}
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="wallet-address">Wallet Address</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="wallet-address">
+                      Wallet Address
+                    </Label>
                     <Input
                       id="wallet-address"
                       placeholder="sei1..."
@@ -602,11 +494,11 @@ export const WatchTab: React.FC = () => {
                       onChange={(e) => setWalletForm(prev => ({ ...prev, address: e.target.value }))}
                     />
                   </div>
-                  <div className="flex space-x-2">
-                    <Button onClick={addCustomWallet} className="flex-1">
+                  <div className="flex space-x-2 pt-4">
+                    <Button onClick={handleAddWallet} className="flex-1" disabled={!walletForm.address}>
                       Add Wallet
                     </Button>
-                    <Button variant="outline" onClick={() => setShowAddWallet(false)}>
+                    <Button variant="outline" onClick={() => setShowAddWallet(false)} className="flex-1">
                       Cancel
                     </Button>
                   </div>
@@ -616,23 +508,18 @@ export const WatchTab: React.FC = () => {
           </div>
           
           <div className="space-y-3">
-            {allWallets.map((wallet) => (
-              <WalletCard key={wallet.address} wallet={wallet} showRemove />
-            ))}
+            {watchedAddresses.length === 0 ? (
+              <Card className="p-8 text-center">
+                <Wallet size={48} className="mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground">No wallets being watched</p>
+                <p className="text-sm text-muted-foreground mt-1">Add wallet addresses to track their balances</p>
+              </Card>
+            ) : (
+              watchedAddresses.map((wallet) => (
+                <WalletCard key={wallet.address} wallet={wallet} />
+              ))
+            )}
           </div>
-
-          {watchedWallets.length > 0 && (
-            <>
-              <h3 className="font-medium pt-4">Watched Wallets ({watchedWallets.length})</h3>
-              <div className="space-y-3">
-                {allWallets
-                  .filter(wallet => watchedWallets.includes(wallet.address))
-                  .map((wallet) => (
-                    <WalletCard key={wallet.address} wallet={wallet} showRemove />
-                  ))}
-              </div>
-            </>
-          )}
         </TabsContent>
       </Tabs>
     </div>

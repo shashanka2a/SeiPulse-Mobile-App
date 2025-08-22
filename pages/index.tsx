@@ -1,12 +1,14 @@
 'use client';
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
 import Head from 'next/head';
-import { Home, CreditCard, TrendingUp, User, Sun, Moon } from 'lucide-react';
+import { Home, CreditCard, TrendingUp, User } from 'lucide-react';
 import { HomeTab } from '../components/HomeTab';
 import { PayTab } from '../components/PayTab';
 import { WatchTab } from '../components/WatchTab';
 import { ProfileTab } from '../components/ProfileTab';
+import { BlockchainStatus } from '../components/BlockchainStatus';
+
 
 interface ThemeContextType {
   isDark: boolean;
@@ -26,29 +28,49 @@ export const useTheme = () => {
 const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isDark, setIsDark] = useState(false);
 
-  const toggleTheme = () => {
-    setIsDark(!isDark);
-    document.documentElement.classList.toggle('dark');
-  };
+  const toggleTheme = useCallback(() => {
+    setIsDark(prev => {
+      const newValue = !prev;
+      if (typeof document !== 'undefined') {
+        document.documentElement.classList.toggle('dark', newValue);
+      }
+      return newValue;
+    });
+  }, []);
+
+  const value = useMemo(() => ({ isDark, toggleTheme }), [isDark, toggleTheme]);
 
   return (
-    <ThemeContext.Provider value={{ isDark, toggleTheme }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );
 };
 
-export default function HomePage() {
+const tabs = [
+  { id: 'home', label: 'Home', icon: Home, component: HomeTab },
+  { id: 'pay', label: 'Pay', icon: CreditCard, component: PayTab },
+  { id: 'watch', label: 'Watch', icon: TrendingUp, component: WatchTab },
+  { id: 'profile', label: 'Profile', icon: User, component: ProfileTab },
+];
+
+function HomePage() {
   const [activeTab, setActiveTab] = useState('home');
 
-  const tabs = [
-    { id: 'home', label: 'Home', icon: Home, component: HomeTab },
-    { id: 'pay', label: 'Pay', icon: CreditCard, component: PayTab },
-    { id: 'watch', label: 'Watch', icon: TrendingUp, component: WatchTab },
-    { id: 'profile', label: 'Profile', icon: User, component: ProfileTab },
-  ];
-
-  const ActiveComponent = tabs.find(tab => tab.id === activeTab)?.component || HomeTab;
+  const renderActiveComponent = useCallback(() => {
+    switch (activeTab) {
+      case 'home':
+        return <HomeTab />;
+      case 'pay':
+        return <PayTab />;
+      case 'watch':
+        return <WatchTab />;
+      case 'profile':
+        return <ProfileTab />;
+      default:
+        return <HomeTab />;
+    }
+  }, [activeTab]);
 
   return (
     <>
@@ -63,8 +85,11 @@ export default function HomePage() {
           <div className="max-w-md mx-auto bg-white dark:bg-gray-800 min-h-screen flex flex-col">
             {/* Main Content */}
             <div className="flex-1 overflow-y-auto pb-20">
-              <ActiveComponent />
+              {renderActiveComponent()}
             </div>
+            
+            {/* Blockchain Status */}
+            <BlockchainStatus />
 
             {/* Bottom Navigation */}
             <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
@@ -95,3 +120,5 @@ export default function HomePage() {
     </>
   );
 }
+
+export default React.memo(HomePage);

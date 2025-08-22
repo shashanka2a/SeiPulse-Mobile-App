@@ -1,10 +1,9 @@
 import type { AppProps } from 'next/app'
 import { useEffect } from 'react'
 import '../styles/globals.css'
-import { PWAInstaller, useServiceWorker } from '../components/PWAInstaller'
+import { PWAInstaller } from '../components/PWAInstaller'
 
 export default function App({ Component, pageProps }: AppProps) {
-  const { isOnline, updateAvailable, updateApp } = useServiceWorker();
 
   useEffect(() => {
     // Prevent zoom on iOS
@@ -27,26 +26,6 @@ export default function App({ Component, pageProps }: AppProps) {
     <>
       <Component {...pageProps} />
       <PWAInstaller />
-      
-      {/* Offline indicator */}
-      {!isOnline && (
-        <div className="fixed top-0 left-0 right-0 bg-red-500 text-white text-center py-2 text-sm z-50">
-          You&apos;re offline. Some features may not work.
-        </div>
-      )}
-
-      {/* Update available notification */}
-      {updateAvailable && (
-        <div className="fixed top-0 left-0 right-0 bg-blue-500 text-white text-center py-2 text-sm z-50">
-          <span>New version available! </span>
-          <button 
-            onClick={updateApp}
-            className="underline font-medium"
-          >
-            Update now
-          </button>
-        </div>
-      )}
     </>
   )
 }
