@@ -26,7 +26,8 @@ export const useWallet = () => {
 
   const connectKeplr = useCallback(async () => {
     if (!window.keplr) {
-      setWallet(prev => ({ ...prev, error: 'Keplr wallet not found' }));
+      console.log('🦊 Keplr wallet extension not found. Please install it from https://www.keplr.app/download');
+      setWallet(prev => ({ ...prev, error: 'Keplr wallet extension not installed. Please install it from keplr.app' }));
       return;
     }
 

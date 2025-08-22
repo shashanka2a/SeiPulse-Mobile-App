@@ -21,7 +21,8 @@ export const PayTab: React.FC = () => {
   const [txId, setTxId] = useState<string | null>(null);
   
   // Blockchain hooks
-  const { address, client, isConnected, connectKeplr } = useWallet();
+  const wallet = useWallet();
+  const { address, client, isConnected, connectKeplr } = wallet;
   const { native, refreshBalances } = useBalances(address, client);
   const { addToQueue, isOnline } = useOfflineQueue(client, address);
   
@@ -454,14 +455,39 @@ export const PayTab: React.FC = () => {
       <div className="p-4 h-full">
         <div className="max-w-sm mx-auto pt-20">
           <Card className="p-8 text-center">
-            <Wallet size={48} className="mx-auto mb-4 text-muted-foreground" />
+            <Wallet size={48} className="mx-auto mb-4 text-gray-500 dark:text-gray-400" />
             <h3 className="text-lg font-medium mb-2">Connect Your Wallet</h3>
-            <p className="text-muted-foreground mb-4">
+            <p className="text-gray-500 dark:text-gray-400 mb-4">
               Connect your Sei wallet to send and receive payments
             </p>
-            <Button onClick={connectKeplr} className="w-full">
-              Connect Keplr Wallet
-            </Button>
+            {typeof window !== 'undefined' && !window.keplr ? (
+              <div className="space-y-3">
+                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <p className="text-sm text-amber-800 dark:text-amber-200 mb-2">
+                    <strong>Keplr Extension Required</strong>
+                  </p>
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                    Install the Keplr browser extension to connect your wallet
+                  </p>
+                </div>
+                <Button 
+                  onClick={() => window.open('https://www.keplr.app/download', '_blank')} 
+                  className="w-full"
+                  variant="outline"
+                >
+                  Install Keplr Extension
+                </Button>
+              </div>
+            ) : (
+              <Button onClick={connectKeplr} className="w-full" disabled={wallet.isConnecting}>
+                {wallet.isConnecting ? 'Connecting...' : 'Connect Keplr Wallet'}
+              </Button>
+            )}
+            {wallet.error && (
+              <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-sm text-red-800 dark:text-red-200">{wallet.error}</p>
+              </div>
+            )}
           </Card>
         </div>
       </div>

@@ -16,7 +16,8 @@ export const WatchTab: React.FC = () => {
   const [activeTab, setActiveTab] = useState('tokens');
   
   // Blockchain hooks
-  const { client, address, isConnected, connectKeplr } = useWallet();
+  const wallet = useWallet();
+  const { client, address, isConnected, connectKeplr } = wallet;
   const { prices, loading: pricesLoading, refreshPrices, getPrice } = usePrices();
   const { 
     watchedAddresses, 
